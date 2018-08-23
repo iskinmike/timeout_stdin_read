@@ -1,10 +1,11 @@
 #include <iostream>
-#include <unistd.h>
 #include <thread>
+#include <string>
 
 #ifdef WIN32
 #include <windows.h>
 #else
+#include <unistd.h>
 #include <sys/select.h>
 #include <poll.h>
 #endif
@@ -21,12 +22,11 @@ int main(int argc, char const *argv[])
 #ifdef WIN32
         HANDLE event_handle = GetStdHandle(STD_INPUT_HANDLE);
 
-        const DWORD timeout = 500;
+        const DWORD timeout = 5000;
         DWORD result = WaitForSingleObject(
           event_handle,
           timeout
         );
-
         switch(result) {
         case WAIT_OBJECT_0: {
             std::cin >> data;

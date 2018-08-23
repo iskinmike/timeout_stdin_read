@@ -24,7 +24,9 @@ set(SOURCES
  set(LIBS
     pthread
  )
-
+if ( WIN32 )
+	set(LIBS "")
+endif ( )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
