@@ -3,6 +3,7 @@
 #include <thread>
 
 #ifdef WIN32
+#include <windows.h>
 #else
 #include <sys/select.h>
 #include <poll.h>
@@ -18,6 +19,23 @@ int main(int argc, char const *argv[])
         std::cout  << "enter symbols:" << std::endl;
 
 #ifdef WIN32
+        HANDLE event_handle = GetStdHandle(STD_INPUT_HANDLE);
+
+        const DWORD timeout = 500;
+        DWORD result = WaitForSingleObject(
+          event_handle,
+          timeout
+        );
+
+        switch(result) {
+        case WAIT_OBJECT_0: {
+            std::cin >> data;
+            break;
+        }
+        case WAIT_TIMEOUT: {break;}
+        case WAIT_ABANDONED: {break;}
+        case WAIT_FAILED: {break;}
+        }
 #else
         //Below cin operation should be executed within stipulated period of time
         fd_set readSet;
@@ -31,7 +49,6 @@ int main(int argc, char const *argv[])
         }
 #endif
     });
-
 
 
     if (input.joinable()) {
