@@ -27,7 +27,26 @@ in case of error return error result as json string:
 	"error": "Can't init X display 0:2"
 }
 ```
+### build
+Build and run on Linux:
+```bash
+    mkdir build
+    cd build
+    cmake ..
+    make
+    cd dist
+    ./bin/wilton index.js
+```
 
+Build and run on Windows:
+```bash
+    mkdir build
+    cd build
+    cmake .. -G "Visual Studio 1x 201x Win64" # example "Visual Studio 12 2013 Win64"
+    cmake --build . --config Release
+    cd dist
+    bin\wilton.exe index.js
+```
 
 ### Using in code example:
 ```js
