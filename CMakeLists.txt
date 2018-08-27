@@ -26,10 +26,10 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 set(SOURCES
     src/wilton_smartec_reader.cpp)
 
- set(LIBS
+set(LIBS
     pthread
-    X11
- )
+    X11)
+
 if ( WIN32 )
 	set(LIBS "")
 endif ( )
