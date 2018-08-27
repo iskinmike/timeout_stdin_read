@@ -14,24 +14,53 @@
 
 cmake_minimum_required ( VERSION 2.8.12 )
 
-project ( test CXX )
+project ( wilton_smartec_reader CXX )
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11 -g")
+# dependencies
+set ( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "" )
+set ( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "" )
+set ( CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "" )
+
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 
 set(SOURCES
-    src/main.cpp)
+    src/wilton_smartec_reader.cpp)
 
- set(LIBS
+set(LIBS
     pthread
-    X11
- )
+    X11)
+
 if ( WIN32 )
 	set(LIBS "")
 endif ( )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_library ( ${PROJECT_NAME} SHARED
+        ${SOURCES} )
 
-# target_include_directories ( ${PROJECT_NAME} BEFORE PRIVATE
-#         $ENV{WILTON_HOME}/devel/include
-# )
+target_include_directories ( ${PROJECT_NAME} BEFORE PRIVATE
+     $ENV{WILTON_HOME}/devel/include
+)
+
+if ( WIN32 )
+    target_link_libraries ( ${PROJECT_NAME} PRIVATE
+            $ENV{WILTON_HOME}/devel/wilton_core.lib )
+endif ( )
+
 target_link_libraries ( ${PROJECT_NAME} ${LIBS})
+
+add_custom_target ( dist ALL
+        COMMAND ${CMAKE_COMMAND} -E remove_directory dist
+        COMMAND ${CMAKE_COMMAND} -E make_directory dist
+        # copy wilton libs to app bundle
+        COMMAND ${CMAKE_COMMAND} -E copy_directory $ENV{WILTON_HOME}/bin dist/bin
+        # copy example module
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
+            dist/bin/
+        # copy JS stdlib
+        COMMAND ${CMAKE_COMMAND} -E copy $ENV{WILTON_HOME}/std.wlib dist/
+        # copy JS app
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/index.js dist/index.js
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS ${PROJECT_NAME}
+        COMMENT "Preparing application bundle, directory: [${CMAKE_CURRENT_BINARY_DIR}/dist] ..." )
