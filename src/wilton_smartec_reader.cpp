@@ -1,4 +1,4 @@
-#include <iostream>
+
 #include <thread>
 #include <string>
 #include <cstring>
@@ -11,8 +11,6 @@
 #include <windows.h>
 #else
 #include <unistd.h>
-#include <sys/select.h>
-#include <poll.h>
 
 #include <X11/Xlib.h>
 #include <X11/X.h>
@@ -21,8 +19,6 @@
 #endif
 
 #include "wilton/wiltoncall.h"
-
-
 
 #ifdef WIN32
 class key_logger
@@ -97,11 +93,8 @@ public:
     }
 
     void stop_logger() {
-        std::cout << "stop_logger called from " << GetCurrentProcessId() << std::endl;
         if (nullptr != hook) {
             UnhookWindowsHookEx(hook);
-            //PostMessage(HWND_BROADCAST, NULL, 0, 0);
-            //PostMessage(NULL, NULL, 0, 0);
             PostThreadMessage(thread_id, NULL, 0, 0);
             cond.notify_all();
         }
@@ -226,7 +219,7 @@ public:
         return (std::cv_status::timeout == status);
     }
     std::string init_logger(){
-        disp = XOpenDisplay(x_display_name.c_str()); // default display
+        disp = XOpenDisplay(x_display_name.c_str());
         if (nullptr == disp) {
             return std::string{"{\"error\": \"Can't init X display "} + x_display_name + std::string{"\"}"};
         }
@@ -327,27 +320,26 @@ public:
 #endif
 
 
-namespace example {
+namespace smartec {
 
 std::string read_smartec_input(int timeout) {
     std::string data{""};
 #ifdef WIN32
-        key_logger& new_logger = key_logger::get_instance();
-        std::string res = new_logger.init_logger();
-        if (!res.empty()) {
-            data = res;
-            return;
-        }
+    key_logger& new_logger = key_logger::get_instance();
+    std::string res = new_logger.init_logger();
+    if (!res.empty()) {
+        data = res;
+    } else {
         new_logger.wait_result_or_timeout(timeout);
         data = new_logger.get_data_as_json();
+    }
 #else
-        key_logger logger;
-        data = logger.get_data(timeout);
+    key_logger logger;
+    data = logger.get_data(timeout);
 #endif
     return data;
 }
 
-// helper function
 char* wrapper_read_smartec_input(void* ctx, const char* data_in, int data_in_len, char** data_out, int* data_out_len) {
     try {
         auto fun = reinterpret_cast<std::string(*)(int)> (ctx);
@@ -372,8 +364,6 @@ char* wrapper_read_smartec_input(void* ctx, const char* data_in, int data_in_len
 }
 } // namespace
 
-// this function is called on module load,
-// must return NULL on success
 extern "C"
 #ifdef _WIN32
 __declspec(dllexport)
@@ -381,10 +371,9 @@ __declspec(dllexport)
 char* wilton_module_init() {
     char* err = nullptr;
 
-    // register 'hello' function
     auto read_smartec_input_name = std::string("read_smartec_input");
     err = wiltoncall_register(read_smartec_input_name.c_str(), static_cast<int> (read_smartec_input_name.length()),
-            reinterpret_cast<void*> (example::read_smartec_input), example::wrapper_read_smartec_input);
+            reinterpret_cast<void*> (smartec::read_smartec_input), smartec::wrapper_read_smartec_input);
     if (nullptr != err) return err;
 
     // return success
