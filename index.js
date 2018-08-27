@@ -28,7 +28,7 @@ define([
     return {
         main: function() {
             print("Calling native module ...");
-            var resp = wiltoncall("read_smartec_input", 5000);
+            var resp = wiltoncall("read_smartec_input", 2000);
             print("Call response: [" + resp + "]");
         }
     };

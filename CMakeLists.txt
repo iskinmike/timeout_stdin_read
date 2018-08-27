@@ -28,6 +28,7 @@ set(SOURCES
 
  set(LIBS
     pthread
+    X11
  )
 if ( WIN32 )
 	set(LIBS "")
