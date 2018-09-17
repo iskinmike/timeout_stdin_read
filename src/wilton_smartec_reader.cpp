@@ -255,7 +255,7 @@ public:
             char_ptr=saved;
             saved=keys;
             keys=char_ptr;
-            usleep(2000);
+            usleep(20);
             if (stop_flag) {
                 break;
             }
