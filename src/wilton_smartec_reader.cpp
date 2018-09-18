@@ -143,7 +143,6 @@ public:
 };
 #else
 #define DEFAULT_DISPLAY ":0"
-#define BIT(c, x)   ( c[x/8]&(1<<(x%8)) )
 
 class key_logger
 {
@@ -183,6 +182,9 @@ class key_logger
     std::string x_display_name;
 
     Display *disp;
+    Window win;
+    int scr;
+    XEvent event;
     std::set<key_codes> codes;
 public:
     key_logger(std::string display_name = DEFAULT_DISPLAY) : data(""), status(std::cv_status::no_timeout), x_display_name(display_name), disp(nullptr) {
@@ -225,40 +227,36 @@ public:
         }
         XSynchronize(disp, true);
         setup_codes(codes);
+
+        scr = DefaultScreen(disp);
+
+        // This hack creates invisible window that catches reader input
+        win = XCreateSimpleWindow(disp, RootWindow(disp, scr), 10, 10, 1, 1, 0,
+                               BlackPixel(disp, scr), WhitePixel(disp, scr));
+
+        int res = XSelectInput(disp, win, KeyPressMask);
+        res = XMapWindow(disp, win);
         return std::string{};
     }
-    void start_logging(){
-        char* saved, *keys, *char_ptr;
-        char buf1[32], buf2[32];
-        saved = static_cast<char*> (buf1);
-        keys = static_cast<char*> (buf2);
-        XQueryKeymap(disp, saved);
+    void start_logging() {
         while (true) {
-            /* find changed keys */
-            XQueryKeymap(disp, keys);
-            for (auto& key_code : codes) {
-                int key_code_pos = static_cast<int> (key_code);
-                if (BIT(keys, key_code_pos)!=BIT(saved, key_code_pos)) {
-                    // Если отличается бит то смотрим клавиша нажата или отпущена
-                    int code = BIT(keys, key_code_pos);
-                    if (code) { // нажата
-                        data += key_to_string(key_code);
-                        if (key_codes::enter_key == key_code || key_codes::return_key == key_code) {
-                            stop_flag.exchange(true, std::memory_order_acq_rel);
-                            cond.notify_all();
-                        }
+            auto res = XCheckMaskEvent(disp, KeyPressMask, &event);
+            /* keyboard events */
+            if (res) {
+                if (event.type == KeyPress)
+                {
+                    unsigned int keycode = event.xkey.keycode;
+                    data += key_to_string(static_cast<key_codes>(keycode));
+                    if ( key_codes::enter_key == static_cast<key_codes>(keycode) || key_codes::return_key == static_cast<key_codes>(keycode)) {
+                        stop_flag.exchange(true, std::memory_order_acq_rel);
+                        cond.notify_all();
                     }
                 }
-             }
-
-            /* swap buffers */
-            char_ptr=saved;
-            saved=keys;
-            keys=char_ptr;
-            usleep(20);
+            }
             if (stop_flag) {
                 break;
             }
+            usleep(100);
         }
     }
     void stop_logging(){
