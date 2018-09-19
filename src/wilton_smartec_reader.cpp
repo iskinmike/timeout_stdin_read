@@ -190,6 +190,12 @@ public:
     key_logger(std::string display_name = DEFAULT_DISPLAY) : data(""), status(std::cv_status::no_timeout), x_display_name(display_name), disp(nullptr) {
         stop_flag.exchange(false, std::memory_order_acq_rel);
     }
+    ~key_logger(){
+        if (nullptr != disp) {
+            XUngrabKeyboard(disp, CurrentTime); // second ungrab for handling errors
+        }
+    }
+
     std::string get_data_as_json(){
         std::string json("{ \"data\": \"");
         json += data;
@@ -228,26 +234,15 @@ public:
         XSynchronize(disp, true);
         setup_codes(codes);
 
-        scr = DefaultScreen(disp);
-
-        // This hack creates invisible window that catches reader input
-        win = XCreateSimpleWindow(disp, RootWindow(disp, scr), 10, 10, 1, 1, 0,
-                               BlackPixel(disp, scr), WhitePixel(disp, scr));
-
-        XSelectInput(disp, win, KeyPressMask| FocusChangeMask);
-        XMapWindow(disp, win);
         return std::string{};
     }
     void start_logging() {
+        XGrabKeyboard(disp, DefaultRootWindow(disp), True, GrabModeAsync, GrabModeAsync, CurrentTime);
         while (true) {
-            auto res = XCheckMaskEvent(disp, KeyPressMask | FocusChangeMask, &event);
+            auto res = XCheckMaskEvent(disp, KeyPressMask, &event);
 
             /* keyboard events */
             if (res) {
-                if (event.type == FocusOut) {
-                    XRaiseWindow(disp, win); // Need raise window to the top. To get input focus
-                    XSetInputFocus(disp, win, RevertToParent, CurrentTime);
-                }
                 if (event.type == KeyPress)
                 {
                     unsigned int keycode = event.xkey.keycode;
@@ -263,6 +258,7 @@ public:
             }
             usleep(100);
         }
+        XUngrabKeyboard(disp, CurrentTime);
     }
     void stop_logging(){
         stop_flag.exchange(true, std::memory_order_acq_rel);
